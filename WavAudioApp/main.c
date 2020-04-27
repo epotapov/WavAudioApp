@@ -64,6 +64,7 @@ int main(int argc, char** argv)
 	hnew.BlockAlign = h.NumChannels * (newbitrate / 8);
 	hnew.ByteRate = hnew.BlockAlign * h.SampleRate;
 	hnew.BitsPerSample = newbitrate;
+	hnew.Subchunk2Size = h.Subchunk2Size / h.BlockAlign * hnew.BlockAlign;
 	fwrite(&hnew, 1, sizeof(hnew), filnew); //check return
 	int increment = h.BlockAlign;
 	unsigned char* buffer = malloc(increment);
