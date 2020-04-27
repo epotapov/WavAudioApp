@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 							}
 						}
 						break;
-					case 16:
+					case 16: 
 						memcpy(outbuffer, buffer, increment);
 						break;
 					case 32:
@@ -171,6 +171,7 @@ int main(int argc, char** argv)
 					case 16:
 						{
 							unsigned char* output = outbuffer;
+							unsigned short* input = buffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
