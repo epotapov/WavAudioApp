@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 		*off = 0;
 	}
 	strcat(filenewpath, "NEW.wav");
-	FILE* fil = fopen(filepath, "r");
+	FILE* fil = fopen(filepath, "rb");
 	FILE* filnew = fopen(filenewpath, "w");
 	if (fil == NULL) 
 	{
@@ -66,22 +66,20 @@ int main(int argc, char** argv)
 	hnew.BitsPerSample = newbitrate;
 	fwrite(&hnew, 1, sizeof(hnew), filnew); //check return
 	int increment = h.BlockAlign;
-	char* buffer = malloc(increment);
-	char* outbuffer = malloc(hnew.BlockAlign);
+	unsigned char* buffer = malloc(increment);
+	unsigned char* outbuffer = malloc(hnew.BlockAlign);
 	
 	for (int i = sizeof(h); i < filesize; i += increment) 
 	{
 		int bytesread = fread(buffer, 1, increment, fil);
 		if (bytesread != increment) 
 		{
-			if (feof(fil))
-				printf("Error reading test.bin: unexpected end of file\n");
 			printf("\nCould not read WAV File Sample");
 			fclose(fil);
 			free(buffer);
 			free(outbuffer);
 			return 0;
-		}
+		} 
 		switch (h.BitsPerSample)
 		{
 			case 8:
@@ -92,7 +90,7 @@ int main(int argc, char** argv)
 						break;
 					case 16:
 						{
-							short* output = outbuffer;
+							unsigned short* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
@@ -103,7 +101,7 @@ int main(int argc, char** argv)
 						break;
 					case 32:
 						{
-							int* output = outbuffer;
+							unsigned int* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
@@ -125,12 +123,13 @@ int main(int argc, char** argv)
 				{
 					case 8:
 						{
-							char* output = outbuffer;
+							unsigned char* output = outbuffer;
+							unsigned short* input = buffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
-								output[a] = buffer[a];
-								output[a] >>= 8;
-
+								/*input[a] >>= 8;
+								output[a] = input[a];*/
+								output[a] = (unsigned char)(((input[a] + 0x8000) >> 8) & 0xFF);
 							}
 						}
 						break;
@@ -139,12 +138,12 @@ int main(int argc, char** argv)
 						break;
 					case 32:
 						{
-							int* output = outbuffer;
+							unsigned int* output = outbuffer;
+							unsigned short* input = buffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
 								output[a] <<= 16;
-
 							}
 						}
 						break;
@@ -161,23 +160,21 @@ int main(int argc, char** argv)
 				{
 					case 8:
 						{
-							char* output = outbuffer;
+							unsigned char* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
 								output[a] >>= 24;
-
 							}
 						}
 						break;
 					case 16:
 						{
-							char* output = outbuffer;
+							unsigned char* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
 								output[a] = buffer[a];
 								output[a] >>= 16;
-
 							}
 						}
 						break;
