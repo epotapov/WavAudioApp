@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 	}
 	strcat(filenewpath, "NEW.wav");
 	FILE* fil = fopen(filepath, "rb");
-	FILE* filnew = fopen(filenewpath, "w");
+	FILE* filnew = fopen(filenewpath, "wb");
 	if (fil == NULL) 
 	{
 		printf("\nFile: %s cannot be opened", filepath);
@@ -90,12 +90,11 @@ int main(int argc, char** argv)
 						break;
 					case 16:
 						{
-							unsigned short* output = outbuffer;
+						    unsigned char* input = buffer;
+							short* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
-								output[a] = buffer[a];
-								output[a] <<= 8;
-
+								output[a] = (((int)input[a]) << 8) - 0x8000;
 							}
 						}
 						break;
@@ -123,13 +122,11 @@ int main(int argc, char** argv)
 				{
 					case 8:
 						{
-							unsigned char* output = outbuffer;
-							unsigned short* input = buffer;
+						    short* input = buffer;
+						    unsigned char* output = outbuffer;
 							for (int a = 0; a < h.NumChannels; a++)
 							{
-								/*input[a] >>= 8;
-								output[a] = input[a];*/
-								output[a] = (unsigned char)(((input[a] + 0x8000) >> 8) & 0xFF);
+								output[a] = ((int)input[a] + 0x8000) >> 8;
 							}
 						}
 						break;
