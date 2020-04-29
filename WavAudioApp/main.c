@@ -2,7 +2,7 @@
 #include <string.h>
 
 
-struct WAVHEADER 
+struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new Header
 {
 	char ChunkID[4]; //RIFF
 	unsigned int ChunkSize;
@@ -19,6 +19,114 @@ struct WAVHEADER
 	unsigned int Subchunk2Size;
 };
 
+
+int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h) //Conversion Algorithm for 
+{
+	switch (h.BitsPerSample) //bit of sample of original file
+	{
+	case 8: //case that the original file is 8 bit
+		switch (newbitrate)
+		{
+		case 8:
+			memcpy(outbuffer, buffer, increment);
+			break;
+		case 16:
+		{
+			unsigned char* input = buffer;
+			short* output = (short*)outbuffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = (((int)input[a]) << 8) - 0x8000;
+			}
+		}
+		break;
+		case 32:
+		{
+			unsigned int* output = (unsigned int*)outbuffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = buffer[a];
+				output[a] <<= 24;
+
+			}
+		}
+		break;
+		default:
+			printf("Not Supported for Input");
+			fclose(fil);
+			free(buffer);
+			free(outbuffer);
+			return 0;
+		}
+		break;
+	case 16: //case that the original file is 16 bit
+		switch (newbitrate)
+		{
+		case 8:
+		{
+			short* input = (short*)buffer;
+			unsigned char* output = outbuffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = ((int)input[a] + 0x8000) >> 8;
+			}
+		}
+		break;
+		case 16:
+			memcpy(outbuffer, buffer, increment);
+			break;
+		case 32:
+		{
+			unsigned int* output = (unsigned int*)outbuffer;
+			unsigned short* input = (unsigned short*)buffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = buffer[a];
+				output[a] <<= 16;
+			}
+		}
+		break;
+		default:
+			return -1;
+		}
+		break;
+	case 32: //case that the original file is 32 bit
+		switch (newbitrate)
+		{
+		case 8:
+		{
+			unsigned char* output = outbuffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = buffer[a];
+				output[a] >>= 24;
+			}
+		}
+		break;
+		case 16:
+		{
+			unsigned char* output = outbuffer;
+			unsigned short* input = (unsigned short*)buffer;
+			for (int a = 0; a < h.NumChannels; a++)
+			{
+				output[a] = buffer[a];
+				output[a] >>= 16;
+			}
+		}
+		break;
+		case 32:
+			memcpy(outbuffer, buffer, increment);
+			break;
+		default:
+			return -1;
+		}
+		break;
+	default:
+		return -1;
+	}
+	return 0;
+}
+
 int main(int argc, char** argv)
 {
 	struct WAVHEADER h;
@@ -32,29 +140,34 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	int i = 0;
-	while (filepath[i])
+	while (filepath[i]) //checks for spaces in file direction and modifies for use
 	{
 		if (filepath[i] == '_')
 			filepath[i] = ' ';
 		i++;
 	}
-	strcpy(filenewpath, filepath);
+	strcpy_s(filenewpath, FILENAME_MAX, filepath);
 	char* off = strrchr(filenewpath, '.');
 	if (off != NULL) {
 		*off = 0;
 	}
-	strcat(filenewpath, "NEW.wav");
-	FILE* fil = fopen(filepath, "rb");
-	FILE* filnew = fopen(filenewpath, "wb");
-	if (fil == NULL) 
+	strcat_s(filenewpath, FILENAME_MAX,"NEW.wav");
+	FILE* fil = NULL;
+	if (fopen_s(&fil, filepath, "rb") != 0)
 	{
-		printf("\nFile: %s cannot be opened", filepath);
+		printf("\nInput File: %s cannot be opened", filepath);
+		return 0;
+	}
+	FILE* filnew = NULL;
+	if (fopen_s(&filnew, filenewpath, "wb") != 0)
+	{
+		printf("\nOutput File: %s cannot be opened", filenewpath);
 		return 0;
 	}
 	fseek(fil, 0, SEEK_END);
 	int filesize = ftell(fil);
 	fseek(fil, 0, SEEK_SET);
-	int bytesread = fread(&h, 1, sizeof(h), fil);
+	size_t bytesread = fread(&h, 1, sizeof(h), fil);
 	if (bytesread != sizeof(h)) {
 		printf("\nCould not read file header.");
 		fclose(fil);
@@ -65,14 +178,14 @@ int main(int argc, char** argv)
 	hnew.ByteRate = hnew.BlockAlign * h.SampleRate;
 	hnew.BitsPerSample = newbitrate;
 	hnew.Subchunk2Size = h.Subchunk2Size / h.BlockAlign * hnew.BlockAlign;
-	fwrite(&hnew, 1, sizeof(hnew), filnew); //check return
+	fwrite(&hnew, 1, sizeof(hnew), filnew); 
 	int increment = h.BlockAlign;
 	unsigned char* buffer = malloc(increment);
 	unsigned char* outbuffer = malloc(hnew.BlockAlign);
 	
 	for (int i = sizeof(h); i < filesize; i += increment) 
 	{
-		int bytesread = fread(buffer, 1, increment, fil);
+		int bytesread = fread(buffer, 1, increment, fil); //issue in this location 
 		if (bytesread != increment) 
 		{
 			printf("\nCould not read WAV File Sample");
@@ -81,119 +194,12 @@ int main(int argc, char** argv)
 			free(outbuffer);
 			return 0;
 		} 
-		switch (h.BitsPerSample)
-		{
-			case 8:
-				switch (newbitrate)
-				{
-					case 8:
-						memcpy(outbuffer, buffer, increment);
-						break;
-					case 16:
-						{
-						    unsigned char* input = buffer;
-							short* output = outbuffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = (((int)input[a]) << 8) - 0x8000;
-							}
-						}
-						break;
-					case 32:
-						{
-							unsigned int* output = outbuffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = buffer[a];
-								output[a] <<= 24;
-
-							}
-						}
-						break;
-					default:
-						printf("Not Supported for Input");
-						fclose(fil);
-						free(buffer);
-						free(outbuffer);
-						return 0;
-				}
-				break;
-			case 16:
-				switch (newbitrate)
-				{
-					case 8:
-						{
-						    short* input = buffer;
-						    unsigned char* output = outbuffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = ((int)input[a] + 0x8000) >> 8;
-							}
-						}
-						break;
-					case 16: 
-						memcpy(outbuffer, buffer, increment);
-						break;
-					case 32:
-						{
-							unsigned int* output = outbuffer;
-							unsigned short* input = buffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = buffer[a];
-								output[a] <<= 16;
-							}
-						}
-						break;
-				default:
-					printf("Not Supported for Input");
-					fclose(fil);
-					free(buffer);
-					free(outbuffer);
-					return 0;
-				}
-				break;
-			case 32:
-				switch (newbitrate)
-				{
-					case 8:
-						{
-							unsigned char* output = outbuffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = buffer[a];
-								output[a] >>= 24;
-							}
-						}
-						break;
-					case 16:
-						{
-							unsigned char* output = outbuffer;
-							unsigned short* input = buffer;
-							for (int a = 0; a < h.NumChannels; a++)
-							{
-								output[a] = buffer[a];
-								output[a] >>= 16;
-							}
-						}
-						break;
-					case 32:
-						memcpy(outbuffer, buffer, increment);
-						break;
-					default:
-						printf("Not Supported for Input");
-						fclose(fil);
-						free(buffer);
-						free(outbuffer);
-						return 0;
-				}
-				break;
-			default:
-				printf("Not Supported for Input");
-				fclose(fil);
-				free(buffer);
-				free(outbuffer);
-				return 0;
+		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h) == -1) {
+			printf("\nCouln't convert WAV Sample");
+			fclose(fil);
+			free(buffer);
+			free(outbuffer);
+			return 0;
 		}
 		fwrite(outbuffer, 1, hnew.BlockAlign, filnew);
 	}
