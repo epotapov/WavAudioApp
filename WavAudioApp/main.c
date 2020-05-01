@@ -20,17 +20,17 @@ struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new H
 };
 
 
-int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h) //Conversion Algorithm for 
+int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h) //Conversion Algorithm for swapping bit values
 {
 	switch (h.BitsPerSample) //bit of sample of original file
 	{
 	case 8: //case that the original file is 8 bit
 		switch (newbitrate)
 		{
-		case 8:
+		case 8: 
 			memcpy(outbuffer, buffer, increment);
 			break;
-		case 16:
+		case 16: 
 		{
 			unsigned char* input = buffer;
 			short* output = (short*)outbuffer;
@@ -42,27 +42,23 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 		break;
 		case 32:
 		{
-			unsigned int* output = (unsigned int*)outbuffer;
+			unsigned char* input = buffer;
+			int* output = (int*)outbuffer;
 			for (int a = 0; a < h.NumChannels; a++)
 			{
-				output[a] = buffer[a];
-				output[a] <<= 24;
+				output[a] = ((int)input[a] - 0x80) << 24;
 
 			}
 		}
 		break;
 		default:
-			printf("Not Supported for Input");
-			fclose(fil);
-			free(buffer);
-			free(outbuffer);
-			return 0;
+			return -1;
 		}
 		break;
 	case 16: //case that the original file is 16 bit
 		switch (newbitrate)
 		{
-		case 8:
+		case 8: 
 		{
 			short* input = (short*)buffer;
 			unsigned char* output = outbuffer;
@@ -72,16 +68,16 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 			}
 		}
 		break;
-		case 16:
+		case 16: 
 			memcpy(outbuffer, buffer, increment);
 			break;
 		case 32:
 		{
-			unsigned int* output = (unsigned int*)outbuffer;
-			unsigned short* input = (unsigned short*)buffer;
+			int* output = (int*)outbuffer;
+			short* input = (short*)buffer;
 			for (int a = 0; a < h.NumChannels; a++)
 			{
-				output[a] = buffer[a];
+				output[a] = input[a];
 				output[a] <<= 16;
 			}
 		}
@@ -95,26 +91,27 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 		{
 		case 8:
 		{
+			int* input = (int*)buffer;
 			unsigned char* output = outbuffer;
 			for (int a = 0; a < h.NumChannels; a++)
 			{
-				output[a] = buffer[a];
-				output[a] >>= 24;
+				output[a] = ((int)input[a] + 0x80000000) >> 24;
+
 			}
 		}
 		break;
-		case 16:
+		case 16: 
 		{
-			unsigned char* output = outbuffer;
-			unsigned short* input = (unsigned short*)buffer;
+			short* output = (short*)outbuffer;
+			int* input = (int*)buffer;
 			for (int a = 0; a < h.NumChannels; a++)
 			{
-				output[a] = buffer[a];
-				output[a] >>= 16;
+				input[a] >>= 16;
+				output[a] = input[a];
 			}
 		}
 		break;
-		case 32:
+		case 32: 
 			memcpy(outbuffer, buffer, increment);
 			break;
 		default:
@@ -136,7 +133,7 @@ int main(int argc, char** argv)
 	char* bits = argv[2];
 	int newbitrate = atoi(bits);
 	if (newbitrate % 8) {
-		printf("\nBits not Correct");
+		printf("Bits not Correct");
 		return 0;
 	}
 	int i = 0;
@@ -155,13 +152,13 @@ int main(int argc, char** argv)
 	FILE* fil = NULL;
 	if (fopen_s(&fil, filepath, "rb") != 0)
 	{
-		printf("\nInput File: %s cannot be opened", filepath);
+		printf("Input File: %s cannot be opened", filepath);
 		return 0;
 	}
 	FILE* filnew = NULL;
 	if (fopen_s(&filnew, filenewpath, "wb") != 0)
 	{
-		printf("\nOutput File: %s cannot be opened", filenewpath);
+		printf("Output File: %s cannot be opened", filenewpath);
 		return 0;
 	}
 	fseek(fil, 0, SEEK_END);
@@ -169,7 +166,7 @@ int main(int argc, char** argv)
 	fseek(fil, 0, SEEK_SET);
 	size_t bytesread = fread(&h, 1, sizeof(h), fil);
 	if (bytesread != sizeof(h)) {
-		printf("\nCould not read file header.");
+		printf("Could not read file header.");
 		fclose(fil);
 		return 0;
 	}
@@ -188,21 +185,26 @@ int main(int argc, char** argv)
 		int bytesread = fread(buffer, 1, increment, fil); //issue in this location 
 		if (bytesread != increment) 
 		{
-			printf("\nCould not read WAV File Sample");
+			printf("Could not read WAV File Sample");
+			fclose(filnew);
 			fclose(fil);
+			remove(filenewpath);
 			free(buffer);
 			free(outbuffer);
 			return 0;
 		} 
 		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h) == -1) {
-			printf("\nCouln't convert WAV Sample");
+			printf("Couln't convert WAV Sample");
+			fclose(filnew);
 			fclose(fil);
+			remove(filenewpath);
 			free(buffer);
 			free(outbuffer);
 			return 0;
 		}
 		fwrite(outbuffer, 1, hnew.BlockAlign, filnew);
 	}
+	printf("Successfully Rewrote the File");
 	free(buffer);
 	free(outbuffer);
 	fclose(fil);
