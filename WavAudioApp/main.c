@@ -11,6 +11,11 @@ remove(filenewpath); \
 free(buffer); \
 free(outbuffer);
 
+#define CLOSE3 free(buffer);\
+free(outbuffer);\
+fclose(fil);\
+fclose(filnew);
+
 //TODO: float to everything else and check number of command line arguments
 
 struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new Header
@@ -279,9 +284,6 @@ int main(int argc, char** argv)
 		fwrite(outbuffer, 1, hnew.BlockAlign, filnew);
 	}
 	printf("Successfully Rewrote the File");
-	free(buffer);
-	free(outbuffer);
-	fclose(fil);
-	fclose(filnew);
+	CLOSE3
 	return 0;
 }
