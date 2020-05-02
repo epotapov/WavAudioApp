@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define CLOSE fclose(filnew);\
@@ -36,7 +37,7 @@ struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new H
 };
 
 
-int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h, int boolfloat) //Conversion Algorithm for swapping bit values
+int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h, int boolfloat, int originfloat) //Conversion Algorithm for swapping bit values
 {
 	switch (h.BitsPerSample) //bit of sample of original file
 	{
@@ -77,7 +78,6 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 					output[a] = input[a];
 					output[a] -= 0x80;
 					output[a] /= 0x80;
-
 				}
 			}
 		}
@@ -121,7 +121,6 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				for (int a = 0; a < h.NumChannels; a++)
 				{
 					output[a] = input[a];
-					output[a] -= 0x8000;
 					output[a] /= 0x8000;
 				}
 			}
@@ -132,51 +131,101 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 		}
 		break;
 	case 32: //case that the original file is 32 bit
-		switch (newbitrate)
+		if (!originfloat)
 		{
-		case 8:
-		{
-			int* input = (int*)buffer;
-			unsigned char* output = outbuffer;
-			for (int a = 0; a < h.NumChannels; a++)
+			switch (newbitrate)
 			{
-				output[a] = ((int)input[a] + 0x80000000) >> 24;
-
-			}
-		}
-		break;
-		case 16: 
-		{
-			short* output = (short*)outbuffer;
-			int* input = (int*)buffer;
-			for (int a = 0; a < h.NumChannels; a++)
+			case 8:
 			{
-				input[a] >>= 16;
-				output[a] = input[a];
-			}
-		}
-		break;
-		case 32: 
-			if (!boolfloat)
-			{
-				memcpy(outbuffer, buffer, increment);
-			}
-			else
-			{
-				float* output = (float*)outbuffer;
 				int* input = (int*)buffer;
+				unsigned char* output = outbuffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					output[a] = input[a];
-					output[a] -= 0x80000000;
-					output[a] /= 0x80000000;
+					output[a] = ((int)input[a] + 0x80000000) >> 24;
+
 				}
 			}
 			break;
-		default:
-			return -1;
+			case 16:
+			{
+				short* output = (short*)outbuffer;
+				int* input = (int*)buffer;
+				for (int a = 0; a < h.NumChannels; a++)
+				{
+					input[a] >>= 16;
+					output[a] = input[a];
+				}
+			}
+			break;
+			case 32:
+				if (!boolfloat)
+				{
+					memcpy(outbuffer, buffer, increment);
+				}
+				else
+				{
+					float* output = (float*)outbuffer;
+					int* input = (int*)buffer;
+					for (int a = 0; a < h.NumChannels; a++)
+					{
+						output[a] = (float)input[a];
+						output[a] /= 0x80000000;
+					}
+				}
+				break;
+			default:
+				return -1;
+			}
+			break;
 		}
-		break;
+		else 
+		{
+			switch (newbitrate)
+			{
+			case 8:
+			{ 
+				float* input = (float*)buffer;
+				unsigned char* output = outbuffer;
+				for (int a = 0; a < h.NumChannels; a++)
+				{
+					input[a] *= 0x80;
+					input[a] += 0x80;
+					output[a] = (unsigned char)input[a];
+				}
+			}
+			break;
+			case 16:
+			{
+				short* output = (short*)outbuffer;
+				float* input = (float*)buffer;
+				for (int a = 0; a < h.NumChannels; a++)
+				{
+					input[a] *= 0x8000;
+					output[a] = (short)input[a];
+				}
+			}
+			break;
+			case 32:
+				if (!boolfloat)
+				{
+					int* output = (int*)outbuffer;
+					float* input = (float*)buffer;
+					for (int a = 0; a < h.NumChannels; a++)
+					{
+						input[a] *= 0x800000;
+						output[a] = (int)input[a]; 
+					}
+				}
+				else
+				{
+					memcpy(outbuffer, buffer, increment); \
+				}
+				break;
+			default:
+				return -1;
+			}
+			break;
+		}
 	default:
 		return -1;
 	}
@@ -196,7 +245,7 @@ int main(int argc, char** argv)
 	{
 		newbitrate = atoi(bits);
 		boolfloat = 0;
-		if (newbitrate % 8 || newbitrate <= 0 || newbitrate > 32) {
+		if (newbitrate % 8 || newbitrate <= 0 || newbitrate > 32 || newbitrate == 24) {
 			printf("Bits not Correct");
 			return 0;
 		}
@@ -258,9 +307,22 @@ int main(int argc, char** argv)
 	hnew.ByteRate = hnew.BlockAlign * h.SampleRate;
 	hnew.BitsPerSample = newbitrate;
 	hnew.Subchunk2Size = h.Subchunk2Size / h.BlockAlign * hnew.BlockAlign;
+	int orignFloat;
+	if (h.AudioFormat == 3) 
+	{
+		orignFloat = 1;
+	}
+	else
+	{
+		orignFloat = 0;
+	}
 	if (boolfloat) 
 	{
 		hnew.AudioFormat = 3;
+	} 
+	else 
+	{
+		hnew.AudioFormat = 1;
 	}
 	fwrite(&hnew, 1, sizeof(hnew), filnew); 
 	int increment = h.BlockAlign;
@@ -269,14 +331,14 @@ int main(int argc, char** argv)
 	
 	for (int i = sizeof(h); i < filesize; i += increment) 
 	{
-		int bytesread = fread(buffer, 1, increment, fil); //issue in this location 
+		size_t bytesread = fread(buffer, 1, increment, fil); //issue in this location 
 		if (bytesread != increment) 
 		{
 			printf("Could not read WAV File Sample");
 			CLOSE2
 			return 0;
 		} 
-		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h, boolfloat) == -1) {
+		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h, boolfloat, orignFloat) == -1) {
 			printf("Couln't convert WAV Sample");
 			CLOSE2
 			return 0;
