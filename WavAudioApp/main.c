@@ -2,14 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+//macros used to close files and free memory
 #define CLOSE fclose(filnew);\
 fclose(fil);\
 remove(filenewpath);
 
-#define CLOSE2 fclose(filnew); \
-fclose(fil); \
-remove(filenewpath); \
-free(buffer); \
+#define CLOSE2 fclose(filnew);\
+fclose(fil);\
+remove(filenewpath);\
+free(buffer);\
 free(outbuffer);
 
 #define CLOSE3 free(buffer);\
@@ -17,9 +19,8 @@ free(outbuffer);\
 fclose(fil);\
 fclose(filnew);
 
-//TODO: float to everything else and check number of command line arguments
 
-struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new Header
+struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new Header and accessing the current file
 {
 	char ChunkID[4]; //RIFF
 	unsigned int ChunkSize;
@@ -42,42 +43,42 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 	switch (h.BitsPerSample) //bit of sample of original file
 	{
 	case 8: //case that the original file is 8 bit
-		switch (newbitrate)
+		switch (newbitrate) //the bits you want to convert to
 		{
 		case 8: 
-			memcpy(outbuffer, buffer, increment);
+			memcpy(outbuffer, buffer, increment); //copies exactly 
 			break;
 		case 16: 
 		{
 			unsigned char* input = buffer;
 			short* output = (short*)outbuffer;
-			for (int a = 0; a < h.NumChannels; a++)
+			for (int a = 0; a < h.NumChannels; a++) //loops for each channel in the file(Stereo or mono)
 			{
-				output[a] = (((int)input[a]) << 8) - 0x8000;
+				output[a] = (((int)input[a]) << 8) - 0x8000;  //shifts then makes it signed. does this with hex values
 			}
 		}
 		break;
 		case 32:
 		{
-			if (!boolfloat) 
+			if (!boolfloat) //the first case is if you want to convert to int 
 			{
 				unsigned char* input = buffer;
 				int* output = (int*)outbuffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					output[a] = ((int)input[a] - 0x80) << 24;
+					output[a] = ((int)input[a] - 0x80) << 24; //makes signed then shifts
 
 				}
 			}
-			else 
+			else //if you want to convert to float
 			{	
 				unsigned char* input = buffer;
 				float* output = (float*)outbuffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
 					output[a] = input[a];
-					output[a] -= 0x80;
-					output[a] /= 0x80;
+					output[a] -= 0x80; //makes signed
+					output[a] /= 0x80; //divides for new scale
 				}
 			}
 		}
@@ -95,12 +96,12 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 			unsigned char* output = outbuffer;
 			for (int a = 0; a < h.NumChannels; a++)
 			{
-				output[a] = ((int)input[a] + 0x8000) >> 8;
+				output[a] = ((int)input[a] + 0x8000) >> 8; //makes unsigned then shifts 
 			}
 		}
 		break;
 		case 16: 
-			memcpy(outbuffer, buffer, increment);
+			memcpy(outbuffer, buffer, increment); //direct copy
 			break;
 		case 32:
 		{
@@ -111,7 +112,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				for (int a = 0; a < h.NumChannels; a++)
 				{
 					output[a] = input[a];
-					output[a] <<= 16;
+					output[a] <<= 16;  //shifts up/left 16
 				}
 			}
 			else 
@@ -121,7 +122,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				for (int a = 0; a < h.NumChannels; a++)
 				{
 					output[a] = input[a];
-					output[a] /= 0x8000;
+					output[a] /= 0x8000;  //divides for new scale
 				}
 			}
 		}
@@ -131,9 +132,9 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 		}
 		break;
 	case 32: //case that the original file is 32 bit
-		if (!originfloat)
+		if (!originfloat) //checks if the original was a float 
 		{
-			switch (newbitrate)
+			switch (newbitrate) //cases to convert to regular int
 			{
 			case 8:
 			{
@@ -141,7 +142,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				unsigned char* output = outbuffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					output[a] = ((int)input[a] + 0x80000000) >> 24;
+					output[a] = ((int)input[a] + 0x80000000) >> 24; //makes unsigned and shifts to the right 24 bits
 
 				}
 			}
@@ -152,7 +153,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				int* input = (int*)buffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					input[a] >>= 16;
+					input[a] >>= 16; //shifts 
 					output[a] = input[a];
 				}
 			}
@@ -160,7 +161,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 			case 32:
 				if (!boolfloat)
 				{
-					memcpy(outbuffer, buffer, increment);
+					memcpy(outbuffer, buffer, increment); //copy
 				}
 				else
 				{
@@ -169,7 +170,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 					for (int a = 0; a < h.NumChannels; a++)
 					{
 						output[a] = (float)input[a];
-						output[a] /= 0x80000000;
+						output[a] /= 0x80000000; //divides for new scale
 					}
 				}
 				break;
@@ -180,7 +181,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 		}
 		else 
 		{
-			switch (newbitrate)
+			switch (newbitrate) //cases to convert to float
 			{
 			case 8:
 			{ 
@@ -188,7 +189,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				unsigned char* output = outbuffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					input[a] *= 0x80;
+					input[a] *= 0x80; //reverse for regular scales
 					input[a] += 0x80;
 					output[a] = (unsigned char)input[a];
 				}
@@ -200,7 +201,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 				float* input = (float*)buffer;
 				for (int a = 0; a < h.NumChannels; a++)
 				{
-					input[a] *= 0x8000;
+					input[a] *= 0x8000; //reverse 
 					output[a] = (short)input[a];
 				}
 			}
@@ -212,13 +213,13 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 					float* input = (float*)buffer;
 					for (int a = 0; a < h.NumChannels; a++)
 					{
-						input[a] *= 0x800000;
+						input[a] *= 0x800000; //reverse
 						output[a] = (int)input[a]; 
 					}
 				}
 				else
 				{
-					memcpy(outbuffer, buffer, increment); \
+					memcpy(outbuffer, buffer, increment); //copy
 				}
 				break;
 			default:
@@ -227,26 +228,32 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 			break;
 		}
 	default:
-		return -1;
+		return -1; //returns -1 if the algorithm couldn't convert 
 	}
 	return 0;
 }
 
 int main(int argc, char** argv)
 {
-	struct WAVHEADER h;
-	struct WAVHEADER hnew;
+	struct WAVHEADER h; //header of given file
+	struct WAVHEADER hnew; //header of new file
 	char* filepath = argv[1];
 	char filenewpath[FILENAME_MAX];
 	char* bits = argv[2];
 	int newbitrate;
 	int boolfloat;
-	if (strcmp(bits, "fl") != 0) 
+	if (argc != 3) { //checks to make sure theres correct number of arguments 
+		printf("You need 2 arguments for the Audio Converter to work"); //sample arguement: C:\Users\Edward_Potapov\Desktop\Audiostuff\Ring08.wav 16
+		printf("\nArgument 1: File Path Argument: Sample Size");
+		printf("\nSupported Sample sizes: 8, 16, 32 and fl(float)\n");
+		return 0;
+	}
+	if (strcmp(bits, "fl") != 0) //if you want 8, 16, or 32
 	{
 		newbitrate = atoi(bits);
 		boolfloat = 0;
-		if (newbitrate % 8 || newbitrate <= 0 || newbitrate > 32 || newbitrate == 24) {
-			printf("Bits not Correct");
+		if (newbitrate % 8 || newbitrate <= 0 || newbitrate > 32 || newbitrate == 24) { //makes sure its not a wrong sample size
+			printf("Bits not Correct\n");
 			return 0;
 		}
 	} 
@@ -264,51 +271,51 @@ int main(int argc, char** argv)
 	}
 	strcpy_s(filenewpath, FILENAME_MAX, filepath);
 	char* off = strrchr(filenewpath, '.');
-	if (off != NULL) {
+	if (off != NULL) { //terminates the end of the new file for NEW.wav to be appended
 		*off = 0;
 	}
-	strcat_s(filenewpath, FILENAME_MAX,"NEW.wav");
+	strcat_s(filenewpath, FILENAME_MAX,"NEW.wav"); //appends NEW.wav
 	FILE* fil = NULL;
-	if (fopen_s(&fil, filepath, "rb") != 0)
+	if (fopen_s(&fil, filepath, "rb") != 0) //opens given file
 	{
-		printf("Input File: %s cannot be opened", filepath);
+		printf("Input File: %s cannot be opened\n", filepath);
 		return 0;
 	}
-	FILE* filnew = NULL;
-	if (fopen_s(&filnew, filenewpath, "wb") != 0)
+	FILE* filnew = NULL; 
+	if (fopen_s(&filnew, filenewpath, "wb") != 0) //opens new file
 	{
-		printf("Output File: %s cannot be opened", filenewpath);
+		printf("Output File: %s cannot be opened\n", filenewpath);
 		fclose(fil);
 		return 0;
 	}
 	fseek(fil, 0, SEEK_END);
 	int filesize = ftell(fil);
-	if (filesize < sizeof(h)) 
+	if (filesize < sizeof(h))  //makes sure its an appropiate size
 	{
-		printf("Not a good WAV File");
+		printf("Not a good WAV File\n");
 		CLOSE
 		return 0;
 	}
-	fseek(fil, 0, SEEK_SET);
-	size_t bytesread = fread(&h, 1, sizeof(h), fil);
+	fseek(fil, 0, SEEK_SET); //starting point for reading 
+	size_t bytesread = fread(&h, 1, sizeof(h), fil); //reads in header
 	if (bytesread != sizeof(h)) {
-		printf("Could not read file header.");
+		printf("Could not read file header.\n");
 		CLOSE
 		return 0;
 	}
-	if (memcmp(h.ChunkID, "RIFF", 4) != 0 || memcmp(h.Format, "WAVE", 4) != 0) 
+	if (memcmp(h.ChunkID, "RIFF", 4) != 0 || memcmp(h.Format, "WAVE", 4) != 0) //checks header
 	{
-		printf("Invalid WAV file");\
+		printf("Invalid WAV file\n");\
 		CLOSE
 		return 0;
 	}
-	hnew = h;
+	hnew = h; //changes info of the new file
 	hnew.BlockAlign = h.NumChannels * (newbitrate / 8);
 	hnew.ByteRate = hnew.BlockAlign * h.SampleRate;
 	hnew.BitsPerSample = newbitrate;
 	hnew.Subchunk2Size = h.Subchunk2Size / h.BlockAlign * hnew.BlockAlign;
 	int orignFloat;
-	if (h.AudioFormat == 3) 
+	if (h.AudioFormat == 3)  //checks if original was float
 	{
 		orignFloat = 1;
 	}
@@ -316,7 +323,7 @@ int main(int argc, char** argv)
 	{
 		orignFloat = 0;
 	}
-	if (boolfloat) 
+	if (boolfloat) //checks if new one will be float
 	{
 		hnew.AudioFormat = 3;
 	} 
@@ -325,27 +332,27 @@ int main(int argc, char** argv)
 		hnew.AudioFormat = 1;
 	}
 	fwrite(&hnew, 1, sizeof(hnew), filnew); 
-	int increment = h.BlockAlign;
-	unsigned char* buffer = malloc(increment);
-	unsigned char* outbuffer = malloc(hnew.BlockAlign);
+	int increment = h.BlockAlign; //increment is one sample with all channels 
+	unsigned char* buffer = malloc(increment); //buffer for old file
+	unsigned char* outbuffer = malloc(hnew.BlockAlign); //new one
 	
 	for (int i = sizeof(h); i < filesize; i += increment) 
 	{
-		size_t bytesread = fread(buffer, 1, increment, fil); //issue in this location 
+		size_t bytesread = fread(buffer, 1, increment, fil); //reads in data for one increment at a time
 		if (bytesread != increment) 
 		{
-			printf("Could not read WAV File Sample");
+			printf("Could not read WAV File Sample\n");
 			CLOSE2
 			return 0;
 		} 
-		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h, boolfloat, orignFloat) == -1) {
-			printf("Couln't convert WAV Sample");
+		if (ConversionAlgo(buffer, outbuffer, increment, fil, newbitrate, h, boolfloat, orignFloat) == -1) { //runs the algorithm for each increment
+			printf("Couln't convert WAV Sample\n");
 			CLOSE2
 			return 0;
 		}
-		fwrite(outbuffer, 1, hnew.BlockAlign, filnew);
+		fwrite(outbuffer, 1, hnew.BlockAlign, filnew); //writes it
 	}
-	printf("Successfully Rewrote the File");
+	printf("Successfully Rewrote the File\n");
 	CLOSE3
-	return 0;
+	return 0; 
 }
