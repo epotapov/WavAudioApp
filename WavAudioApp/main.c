@@ -37,28 +37,6 @@ struct WAVHEADER //Abstraction of The WavHeader to Be used when writing to new H
 	unsigned int Subchunk2Size;
 };
 
-struct RIFFHEADER
-{
-	char ChunkID[4]; 
-	unsigned int ChunkSize;
-	char Format[4]; //WAVE
-};
-
-struct CHUNK
-{
-	char ChunkID[4];
-	unsigned int ChunkSize;
-};
-
-struct FMTHEADER
-{
-	unsigned short AudioFormat;
-	unsigned short NumChannels;
-	unsigned int SampleRate;
-	unsigned int ByteRate;
-	unsigned short BlockAlign;
-	unsigned short BitsPerSample;
-};
 
 int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int newbitrate, struct WAVHEADER h, int boolfloat, int originfloat) //Conversion Algorithm for swapping bit values
 {
@@ -257,9 +235,7 @@ int ConversionAlgo(char* buffer, char* outbuffer, int increment, FILE* fil, int 
 
 int main(int argc, char** argv)
 {
-	struct RIFFHEADER riffheader; //header of riff
-	struct CHUNK chunk; //chunk
-	struct FMTHEADER fmt; //fmt
+	struct WAVHEADER h; //header of given file
 	struct WAVHEADER hnew; //header of new file
 	char* filepath = argv[1];
 	char filenewpath[FILENAME_MAX];
@@ -314,41 +290,20 @@ int main(int argc, char** argv)
 	}
 	fseek(fil, 0, SEEK_END);
 	int filesize = ftell(fil);
-	/*if (filesize < sizeof(h))  //makes sure its an appropiate size
+	if (filesize < sizeof(h))  //makes sure its an appropiate size
 	{
 		printf("Not a good WAV File\n");
 		CLOSE
 		return 0;
-	}*/
+	}
 	fseek(fil, 0, SEEK_SET); //starting point for reading 
-	size_t bytesread = fread(&riffheader, 1, sizeof(riffheader), fil); //reads in header
-	if (bytesread != sizeof(riffheader)) {
+	size_t bytesread = fread(&h, 1, sizeof(h), fil); //reads in header
+	if (bytesread != sizeof(h)) {
 		printf("Could not read file header.\n");
 		CLOSE
 		return 0;
 	}
-	bytesread = fread(&chunk, 1, sizeof(chunk), fil); //reads in header
-	if (bytesread != sizeof(chunk)) {
-		printf("Could not read file header.\n");
-		CLOSE
-		return 0;
-	}
-	fseek(fil, chunk.ChunkSize, SEEK_CUR); //starting point for reading 
-	bytesread = fread(&chunk, 1, sizeof(chunk), fil); //reads in header
-	if (bytesread != sizeof(chunk)) {
-		printf("Could not read file header.\n");
-		CLOSE
-		return 0;
-	}
-	bytesread = fread(&fmt, 1, sizeof(fmt), fil); //reads in header
-	if (bytesread != sizeof(fmt)) {
-		printf("Could not read file header.\n");
-		CLOSE
-			return 0;
-	}
-
-
-	/*if (memcmp(h.ChunkID, "RIFF", 4) != 0 || memcmp(h.Format, "WAVE", 4) != 0) //checks header
+	if (memcmp(h.ChunkID, "RIFF", 4) != 0 || memcmp(h.Format, "WAVE", 4) != 0) //checks header
 	{
 		printf("Invalid WAV file\n");\
 		CLOSE
@@ -398,6 +353,6 @@ int main(int argc, char** argv)
 		fwrite(outbuffer, 1, hnew.BlockAlign, filnew); //writes it
 	}
 	printf("Successfully Rewrote the File\n");
-	CLOSE3*/
+	CLOSE3
 	return 0; 
 }
