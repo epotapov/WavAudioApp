@@ -244,7 +244,7 @@ int main(int argc, char** argv)
 	int boolfloat;
 	if (argc != 3) { //checks to make sure theres correct number of arguments 
 		printf("You need 2 arguments for the Audio Converter to work"); //sample arguement: C:\Users\Edward_Potapov\Desktop\Audiostuff\Ring08.wav 16
-		printf("\nArgument 1: File Path Argument: Sample Size");
+		printf("\nArgument 1: File Path Argument 2: Sample Size");
 		printf("\nSupported Sample sizes: 8, 16, 32 and fl(float)\n");
 		return 0;
 	}
